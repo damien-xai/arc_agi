@@ -260,6 +260,85 @@ async def get_next_message_openai(
     return message.choices[0].message.content, usage
 
 
+async def get_next_message_openrouter(
+    openrouter_client: AsyncOpenAI,
+    messages: list[dict[str, T.Any]],
+    model: Model,
+    temperature: float,
+    retry_secs: int = 15,
+    max_retries: int = 15,
+) -> tuple[str, ModelUsage] | None:
+    retry_count = 0
+    extra_params = {}
+    # Handle temperature for reasoning models
+    if model not in [
+        Model.openrouter_o1,
+        Model.openrouter_o1_mini,
+        Model.openrouter_o3,
+    ]:
+        extra_params["temperature"] = temperature
+
+    max_tokens = 10_000
+    if model in [
+        Model.openrouter_o1,
+        Model.openrouter_o1_mini,
+        Model.openrouter_o3,
+        Model.openrouter_o4_mini,
+    ]:
+        max_tokens = 20_000
+
+    while True:
+        try:
+            request_id = random_string()
+            start = time.time()
+            logfire.debug(f"[{request_id}] calling openrouter")
+            message = await openrouter_client.chat.completions.create(
+                **extra_params,
+                max_tokens=max_tokens,
+                messages=messages,
+                model=model.value,
+                timeout=120,
+            )
+            took_ms = (time.time() - start) * 1000
+
+            # Handle cases where usage might be None (some OpenRouter models may not return usage info)
+            if message.usage:
+                if (
+                    hasattr(message.usage, "prompt_tokens_details")
+                    and message.usage.prompt_tokens_details
+                ):
+                    cached_tokens = message.usage.prompt_tokens_details.cached_tokens
+                else:
+                    cached_tokens = 0
+                usage = ModelUsage(
+                    cache_creation_input_tokens=0,
+                    cache_read_input_tokens=cached_tokens,
+                    input_tokens=message.usage.prompt_tokens - cached_tokens,
+                    output_tokens=message.usage.completion_tokens,
+                )
+            else:
+                # If no usage info is provided, create a minimal usage object
+                usage = ModelUsage(
+                    cache_creation_input_tokens=0,
+                    cache_read_input_tokens=0,
+                    input_tokens=0,
+                    output_tokens=0,
+                )
+            logfire.debug(
+                f"[{request_id}] got back openrouter, took {took_ms:.2f}, {usage}, cost_cents={Attempt.cost_cents_from_usage(model=model, usage=usage)}"
+            )
+            break  # Success, exit the loop
+        except Exception as e:
+            logfire.debug(
+                f"Other openrouter error: {str(e)}, retrying in {retry_secs} seconds ({retry_count}/{max_retries})..."
+            )
+            retry_count += 1
+            if retry_count >= max_retries:
+                return None
+            await asyncio.sleep(retry_secs)
+    return message.choices[0].message.content, usage
+
+
 async def get_next_message_gemini(
     cache: gemini_caching.CachedContent,
     model: Model,
@@ -321,6 +400,26 @@ async def get_next_messages(
 ) -> list[tuple[str, ModelUsage]] | None:
     if n_times <= 0:
         return []
+    
+    # Route all OpenRouter models to the clean implementation
+    if "openrouter" in model.value:
+        from .openrouter import get_next_messages as get_openrouter_messages
+        
+        # Remove cache_control from messages for OpenRouter
+        # OpenRouter doesn't support Anthropic's cache control feature
+        for message in messages:
+            if isinstance(message.get("content"), list):
+                for content in message["content"]:
+                    if "cache_control" in content:
+                        del content["cache_control"]
+        
+        return await get_openrouter_messages(
+            messages=messages,
+            model=model,
+            temperature=temperature,
+            n_times=n_times
+        )
+    
     if model in [Model.claude_3_5_sonnet, Model.claude_3_5_haiku]:
         if model == Model.claude_3_5_haiku:
             messages = text_only_messages(messages)
@@ -529,6 +628,65 @@ async def get_next_messages(
         ]
         # filter out the Nones
         return [m for m in n_messages if m]
+    elif model in [
+        Model.openrouter_claude_3_5_sonnet,
+        Model.openrouter_claude_4_sonnet,
+        Model.openrouter_o1,
+        Model.openrouter_o1_mini,
+        Model.openrouter_o3,
+        Model.openrouter_o4_mini,
+        Model.openrouter_grok_4,
+    ]:
+        openrouter_client = AsyncOpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=os.environ["OPENROUTER_API_KEY"],
+        )
+        # Convert system messages to developer role for o1/o3 models
+        if messages[0]["role"] == "system" and model in [
+            Model.openrouter_o1,
+            Model.openrouter_o1_mini,
+            Model.openrouter_o3,
+            Model.openrouter_o4_mini,
+        ]:
+            messages[0]["role"] = "developer"
+        # Use text-only messages for o1/o3 models
+        if model in [
+            Model.openrouter_o1,
+            Model.openrouter_o1_mini,
+            Model.openrouter_o3,
+        ]:
+            messages = text_only_messages(messages=messages)
+
+        # Remove cache_control from messages for OpenRouter
+        # OpenRouter doesn't support Anthropic's cache control feature
+        for message in messages:
+            if isinstance(message.get("content"), list):
+                for content in message["content"]:
+                    if "cache_control" in content:
+                        del content["cache_control"]
+
+        n_messages = [
+            # await get_next_message_openrouter(
+            #     openrouter_client=openrouter_client,
+            #     messages=messages,
+            #     model=model,
+            #     temperature=temperature,
+            # ),
+            *await asyncio.gather(
+                *[
+                    get_next_message_openrouter(
+                        openrouter_client=openrouter_client,
+                        messages=messages,
+                        model=model,
+                        temperature=temperature,
+                    )
+                    # for _ in range(n_times - 1)
+                    for _ in range(n_times)
+                ]
+            ),
+        ]
+        # filter out the Nones
+        return [m for m in n_messages if m]
     else:
         raise ValueError(f"Invalid model: {model}")
 
@@ -543,6 +701,29 @@ async def get_next_message(
             input_tokens=0,
             output_tokens=0,
         )
+    
+    # Route all OpenRouter models to the clean implementation
+    if "openrouter" in model.value:
+        from .openrouter import get_next_message_openrouter
+        
+        # Remove cache_control from messages for OpenRouter
+        # OpenRouter doesn't support Anthropic's cache control feature
+        for message in messages:
+            if isinstance(message.get("content"), list):
+                for content in message["content"]:
+                    if "cache_control" in content:
+                        del content["cache_control"]
+        
+        result = await get_next_message_openrouter(
+            messages=messages,
+            model=model,
+            temperature=temperature,
+        )
+        if result:
+            return result
+        else:
+            raise ValueError(f"Failed to get response from OpenRouter for model {model}")
+    
     if model in [Model.claude_3_5_sonnet, Model.claude_3_5_haiku]:
         anthropic_client = AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
         if messages[0]["role"] == "system":
@@ -651,69 +832,56 @@ async def get_next_message(
             input_tokens=message.usage.prompt_tokens - cached_tokens,
             output_tokens=message.usage.completion_tokens,
         )
-    elif model == Model.openrouter_claude_3_5_sonnet:
+    elif model in [
+        Model.openrouter_claude_3_5_sonnet,
+        Model.openrouter_claude_4_sonnet,
+        Model.openrouter_o1,
+        Model.openrouter_o1_mini,
+        Model.openrouter_o3,
+        Model.openrouter_o4_mini,
+        Model.openrouter_grok_4,
+    ]:
         openrouter_client = AsyncOpenAI(
             base_url="https://openrouter.ai/api/v1",
             api_key=os.environ["OPENROUTER_API_KEY"],
         )
-        message = await openrouter_client.chat.completions.create(
-            model=model.value,
+        # Handle system messages for o1/o3 models
+        if messages[0]["role"] == "system" and model in [
+            Model.openrouter_o1,
+            Model.openrouter_o1_mini,
+            Model.openrouter_o3,
+            Model.openrouter_o4_mini,
+        ]:
+            messages[0]["role"] = "developer"
+        # Use text-only messages for o1/o3 models
+        if model in [
+            Model.openrouter_o1,
+            Model.openrouter_o1_mini,
+            Model.openrouter_o3,
+        ]:
+            messages = text_only_messages(messages=messages)
+
+        # Remove cache_control from messages for OpenRouter
+        # OpenRouter doesn't support Anthropic's cache control feature
+        for message in messages:
+            if isinstance(message.get("content"), list):
+                for content in message["content"]:
+                    if "cache_control" in content:
+                        del content["cache_control"]
+
+        # Use existing openrouter function
+        result = await get_next_message_openrouter(
+            openrouter_client=openrouter_client,
             messages=messages,
+            model=model,
             temperature=temperature,
-            max_tokens=10_000,
         )
-        if message.usage.prompt_tokens_details:
-            cached_tokens = message.usage.prompt_tokens_details.cached_tokens
+        if result:
+            return result
         else:
-            cached_tokens = 0
-        return message.choices[0].message.content, ModelUsage(
-            cache_creation_input_tokens=0,
-            cache_read_input_tokens=cached_tokens,
-            input_tokens=message.usage.prompt_tokens - cached_tokens,
-            output_tokens=message.usage.completion_tokens,
-        )
-    elif model == Model.openrouter_o1:
-        openrouter_client = AsyncOpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=os.environ["OPENROUTER_API_KEY"],
-        )
-        message = await openrouter_client.chat.completions.create(
-            model=model.value,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=20_000,
-        )
-        if message.usage.prompt_tokens_details:
-            cached_tokens = message.usage.prompt_tokens_details.cached_tokens
-        else:
-            cached_tokens = 0
-        return message.choices[0].message.content, ModelUsage(
-            cache_creation_input_tokens=0,
-            cache_read_input_tokens=cached_tokens,
-            input_tokens=message.usage.prompt_tokens - cached_tokens,
-            output_tokens=message.usage.completion_tokens,
-        )
-    elif model == Model.openrouter_o1_mini:
-        openrouter_client = AsyncOpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=os.environ["OPENROUTER_API_KEY"],
-        )
-        message = await openrouter_client.chat.completions.create(
-            model=model.value,
-            messages=messages,
-            temperature=temperature,
-            max_tokens=20_000,
-        )
-        if message.usage.prompt_tokens_details:
-            cached_tokens = message.usage.prompt_tokens_details.cached_tokens
-        else:
-            cached_tokens = 0
-        return message.choices[0].message.content, ModelUsage(
-            cache_creation_input_tokens=0,
-            cache_read_input_tokens=cached_tokens,
-            input_tokens=message.usage.prompt_tokens - cached_tokens,
-            output_tokens=message.usage.completion_tokens,
-        )
+            raise ValueError(
+                f"Failed to get response from OpenRouter for model {model}"
+            )
     elif model == [Model.azure_gpt_4o, Model.azure_gpt_4o_mini]:
         azure_client = AsyncAzureOpenAI(
             api_key=os.environ["AZURE_OPENAI_API_KEY"],
