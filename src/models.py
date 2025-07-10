@@ -45,8 +45,10 @@ class Model(str, Enum):
     groq_llama_3_2_90b_vision = "llama-3.2-90b-vision-preview"
     # openrouter_claude_3_5_sonnet = "anthropic/claude-3.5-sonnet"
     openrouter_claude_3_5_sonnet = "anthropic/claude-3.5-sonnet:beta"
+    openrouter_claude_4_sonnet = "anthropic/claude-sonnet-4"
     openrouter_o1 = "openai/o1-preview"
     openrouter_o1_mini = "openai/o1-mini-preview"
+    openrouter_o3 = "openai/o3"
     # gemini_1_5_pro = "gemini-1.5-pro"
     gemini_1_5_pro = "gemini-1.5-pro-002"
     deep_seek_r1 = "deepseek-reasoner"
@@ -62,6 +64,12 @@ class ModelPrice(BaseModel):
 
 model_price_map: dict[Model, ModelPrice] = {
     Model.claude_3_5_sonnet: ModelPrice(
+        cache_create_per_million_cents=375,
+        cache_read_per_million_cents=0.30,
+        input_tokens_per_million_cents=300,
+        output_tokens_per_million_cents=1_500,
+    ),
+    Model.openrouter_claude_4_sonnet: ModelPrice(
         cache_create_per_million_cents=375,
         cache_read_per_million_cents=0.30,
         input_tokens_per_million_cents=300,
@@ -134,6 +142,12 @@ model_price_map: dict[Model, ModelPrice] = {
         output_tokens_per_million_cents=219,
     ),
     Model.o3_mini: ModelPrice(
+        cache_create_per_million_cents=110,
+        cache_read_per_million_cents=55,
+        input_tokens_per_million_cents=110,
+        output_tokens_per_million_cents=440,
+    ),
+    Model.openrouter_o3: ModelPrice(
         cache_create_per_million_cents=110,
         cache_read_per_million_cents=55,
         input_tokens_per_million_cents=110,
@@ -749,13 +763,13 @@ Once you are done reasoning, rewrite the code to fix the issue. Return the code 
             else:
                 diff_str = ""
             s = f"""
-# Example {wrong_attempt['ind']}:
+# Example {wrong_attempt["ind"]}:
 
-# Input ASCII representation:{DOUBLE_ENTER}{grid_to_ascii(grid=np.array(wrong_attempt['input']))}{DOUBLE_ENTER}
+# Input ASCII representation:{DOUBLE_ENTER}{grid_to_ascii(grid=np.array(wrong_attempt["input"]))}{DOUBLE_ENTER}
 
-# Incorrect Transformed Output ASCII representation:{DOUBLE_ENTER}{grid_to_ascii(grid=np.array(wrong_attempt['attempt']))}{DOUBLE_ENTER}
+# Incorrect Transformed Output ASCII representation:{DOUBLE_ENTER}{grid_to_ascii(grid=np.array(wrong_attempt["attempt"]))}{DOUBLE_ENTER}
 
-# Expected Output ASCII representation:{DOUBLE_ENTER}{grid_to_ascii(grid=np.array(wrong_attempt['output']))}{DOUBLE_ENTER}
+# Expected Output ASCII representation:{DOUBLE_ENTER}{grid_to_ascii(grid=np.array(wrong_attempt["output"]))}{DOUBLE_ENTER}
 
 {diff_str}
                 """

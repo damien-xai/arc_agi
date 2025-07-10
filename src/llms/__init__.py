@@ -425,7 +425,7 @@ async def get_next_messages(
             )
             use_baseten = False
         elif model == Model.baseten_deepseek_r1:
-            deepseek_client = AsyncOpenAI(
+            baseten_client = AsyncOpenAI(
                 api_key=os.environ["BASETEN_API_KEY"],
                 base_url="https://bridge.baseten.co/v1/direct",
             )
@@ -460,7 +460,7 @@ async def get_next_messages(
             n_messages = await asyncio.gather(
                 *[
                     get_next_message_deepseek(
-                        deepseek_client=deepseek_client,
+                        deepseek_client=baseten_client,
                         messages=messages,
                         model=model,
                         temperature=temperature,
