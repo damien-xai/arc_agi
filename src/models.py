@@ -49,6 +49,8 @@ class Model(str, Enum):
     openrouter_o1 = "openai/o1-preview"
     openrouter_o1_mini = "openai/o1-mini-preview"
     openrouter_o3 = "openai/o3"
+    openrouter_grok_4 = "x-ai/grok-4"
+    openrouter_o4_mini = "openai/o4-mini"
     # gemini_1_5_pro = "gemini-1.5-pro"
     gemini_1_5_pro = "gemini-1.5-pro-002"
     deep_seek_r1 = "deepseek-reasoner"
@@ -152,6 +154,18 @@ model_price_map: dict[Model, ModelPrice] = {
         cache_read_per_million_cents=55,
         input_tokens_per_million_cents=110,
         output_tokens_per_million_cents=440,
+    ),
+    Model.openrouter_o4_mini: ModelPrice(
+        cache_create_per_million_cents=110,
+        cache_read_per_million_cents=55,
+        input_tokens_per_million_cents=110,
+        output_tokens_per_million_cents=440,
+    ),
+    Model.openrouter_grok_4: ModelPrice(
+        cache_create_per_million_cents=300,  # Using same as input since no specific cache create price
+        cache_read_per_million_cents=75,  # $0.00000075 per token = $0.75 per million
+        input_tokens_per_million_cents=300,  # $3 per million
+        output_tokens_per_million_cents=1500,  # $15 per million
     ),
 }
 

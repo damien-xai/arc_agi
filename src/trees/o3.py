@@ -355,8 +355,8 @@ small_tree: list[RootAttemptConfig] = [
     ),
 ]
 
-model_openrouter = Model.openrouter_claude_4_sonnet
-
+# model_openrouter = Model.openrouter_o3
+model_openrouter = Model.openrouter_o4_mini
 
 small_tree_openrouter: list[RootAttemptConfig] = [
     RootAttemptConfig(
