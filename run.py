@@ -42,7 +42,7 @@ async def solve_and_write(
     first_solutions, second_solutions = await solve_challenge(
         challenge=challenge,
         tree=tree,
-        # url=url,
+        url=url,
     )
     solutions_d[challenge.id] = []
     for i in range(len(first_solutions)):
@@ -189,10 +189,10 @@ async def run() -> None:
         tree=o3.small_tree_openrouter,
         # limit=10,
         # offset=50,
-        limit=1,
+        limit=10,
         offset=0,
         max_concurrent=20,
-        only_run_ids={"045e512c"},
+        # only_run_ids={"045e512c"},
     )
     evaluate_solutions(
         attempts_solutions_path=attempts_solutions_path,

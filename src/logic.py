@@ -605,6 +605,7 @@ async def solve_challenge(
             "ANTHROPIC_API_KEY": os.environ["ANTHROPIC_API_KEY"],
             "LOGFIRE_TOKEN": os.environ.get("LOGFIRE_TOKEN"),
             "NEON_DB_DSN": os.environ.get("NEON_DB_DSN"),
+            "OPENROUTER_API_KEY": os.environ.get("OPENROUTER_API_KEY"),
         }
         if "KAGGLE" in os.environ:
             # RECORD 0 LOGS

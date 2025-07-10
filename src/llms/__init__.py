@@ -400,6 +400,26 @@ async def get_next_messages(
 ) -> list[tuple[str, ModelUsage]] | None:
     if n_times <= 0:
         return []
+    
+    # Route all OpenRouter models to the clean implementation
+    if "openrouter" in model.value:
+        from .openrouter import get_next_messages as get_openrouter_messages
+        
+        # Remove cache_control from messages for OpenRouter
+        # OpenRouter doesn't support Anthropic's cache control feature
+        for message in messages:
+            if isinstance(message.get("content"), list):
+                for content in message["content"]:
+                    if "cache_control" in content:
+                        del content["cache_control"]
+        
+        return await get_openrouter_messages(
+            messages=messages,
+            model=model,
+            temperature=temperature,
+            n_times=n_times
+        )
+    
     if model in [Model.claude_3_5_sonnet, Model.claude_3_5_haiku]:
         if model == Model.claude_3_5_haiku:
             messages = text_only_messages(messages)
@@ -681,6 +701,29 @@ async def get_next_message(
             input_tokens=0,
             output_tokens=0,
         )
+    
+    # Route all OpenRouter models to the clean implementation
+    if "openrouter" in model.value:
+        from .openrouter import get_next_message_openrouter
+        
+        # Remove cache_control from messages for OpenRouter
+        # OpenRouter doesn't support Anthropic's cache control feature
+        for message in messages:
+            if isinstance(message.get("content"), list):
+                for content in message["content"]:
+                    if "cache_control" in content:
+                        del content["cache_control"]
+        
+        result = await get_next_message_openrouter(
+            messages=messages,
+            model=model,
+            temperature=temperature,
+        )
+        if result:
+            return result
+        else:
+            raise ValueError(f"Failed to get response from OpenRouter for model {model}")
+    
     if model in [Model.claude_3_5_sonnet, Model.claude_3_5_haiku]:
         anthropic_client = AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
         if messages[0]["role"] == "system":
