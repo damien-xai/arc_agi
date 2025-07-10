@@ -679,7 +679,8 @@ async def solve_challenge_server(
         os.environ[k] = v
     res = await solve_challenge(tree=tree, challenge=challenge)
     for k in env_vars.keys():
-        del os.environ[k]
+        if k in os.environ:
+            del os.environ[k]
     return res
 
 

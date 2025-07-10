@@ -99,6 +99,9 @@ async def process_challenges_with_limit(
                     solutions_path=solutions_path,
                 )
             except Exception as e:
+                import traceback
+
+                print(traceback.format_exc())
                 logfire.debug(f"Error processing challenge: {e}")
                 raise
 
