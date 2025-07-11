@@ -11,7 +11,7 @@ from src.models import (
     RootPromptConfig,
 )
 
-model = Model.o3_mini
+model = Model.o3
 
 prod_kaggle_tree: list[RootAttemptConfig] = [
     RootAttemptConfig(
@@ -214,7 +214,7 @@ prod_kaggle_tree: list[RootAttemptConfig] = [
 ]
 small_tree: list[RootAttemptConfig] = [
     RootAttemptConfig(
-        attempts=0,
+        attempts=20,
         llm_config=LLMConfig(
             model=model,
             temperature=0.95,
@@ -355,30 +355,30 @@ small_tree: list[RootAttemptConfig] = [
     ),
 ]
 
-# model_openrouter = Model.openrouter_o3
-model_openrouter = Model.openrouter_o4_mini
+model_openrouter = Model.openrouter_o3
+# model_openrouter = Model.openrouter_grok_4
 
 small_tree_openrouter: list[RootAttemptConfig] = [
-    RootAttemptConfig(
-        attempts=10,
-        llm_config=LLMConfig(
-            model=model_openrouter,
-            temperature=0.95,
-        ),
-        prompt_config=RootPromptConfig(
-            base_prompt=Prompt.REASONING,
-            use_examples=True,
-            use_diffs=True,
-            use_images=False,
-            use_ascii=True,
-            use_array=True,
-            use_image=False,
-        ),
-        fixes=[],
-    ),
+    # RootAttemptConfig(
+    #     attempts=10,
+    #     llm_config=LLMConfig(
+    #         model=model_openrouter,
+    #         temperature=0.95,
+    #     ),
+    #     prompt_config=RootPromptConfig(
+    #         base_prompt=Prompt.REASONING,
+    #         use_examples=True,
+    #         use_diffs=True,
+    #         use_images=False,
+    #         use_ascii=True,
+    #         use_array=True,
+    #         use_image=False,
+    #     ),
+    #     fixes=[],
+    # ),
     RootAttemptConfig(
         include_all_attempts_in_fixes=True,
-        attempts=10,
+        attempts=30,
         llm_config=LLMConfig(
             model=model_openrouter,
             temperature=0.95,

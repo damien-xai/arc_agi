@@ -129,6 +129,7 @@ async def run_from_json(
     tree: list[RootAttemptConfig],
     limit: int | None,
     offset: int | None = None,
+    use_smallest_first: bool | None = None,
     only_run_ids: set[str] = None,
     max_concurrent: int,
     truth_solutions_path: str | None = None,
@@ -144,7 +145,10 @@ async def run_from_json(
         challenges = {k: challenges[k] for k in list(challenges)[offset:]}
     if limit:
         # only include the first 10 challenges
-        challenges = {k: challenges[k] for k in list(challenges)[:limit]}
+        challenge_keys = list(challenges.keys())
+        if use_smallest_first:
+            challenge_keys = sorted(challenges.keys(), key=str)
+        challenges = {k: challenges[k] for k in challenge_keys[:limit]}
 
     solutions_d: dict[str, list[ChallengeSolution]] = {}
     # run all challenges in parallel to start
@@ -173,14 +177,21 @@ async def run_from_json(
 
 
 async def run() -> None:
-    challenges_path = "arc-prize-2024/arc-agi_training_challenges.json"
-    truth_solutions_path = "arc-prize-2024/arc-agi_training_solutions.json"
-    attempts_solutions_path = "test_data/training_solutions.json"
+    training_or_eval = "evaluation"
+    v1or2 = "2025"
+    challenges_path = f"arc-prize-{v1or2}/arc-agi_{training_or_eval}_challenges.json"
+    truth_solutions_path = (
+        f"arc-prize-{v1or2}/arc-agi_{training_or_eval}_solutions.json"
+    )
+
+    RUN = f"{training_or_eval}-{v1or2}-232390_MANY"
+
+    attempts_solutions_path = f"test_data/{training_or_eval}_solutions{RUN}.json"
     await run_from_json(
         challenges_path=challenges_path,
         solutions_path=attempts_solutions_path,
         truth_solutions_path=truth_solutions_path,
-        temp_solutions_dir_path="test_data/tmp_solutions",
+        temp_solutions_dir_path=f"test_data/tmp_solutions{RUN}",
         # tree=experiments.sonnet_writeup_deep,
         # tree=experiments.sonnet_writeup_shallow,
         # tree=experiments.sonnet_writeup_med,
@@ -189,12 +200,13 @@ async def run() -> None:
         # tree=deepseek.prod_kaggle_tree,
         # tree=deepseek.small_baseten_tree,
         # tree=o3.small_tree,
-        tree=o3.small_tree_openrouter,
+        tree=o3.small_tree,
         # limit=10,
         # offset=50,
-        limit=10,
+        limit=1,
+        use_smallest_first=True,
         offset=0,
-        max_concurrent=20,
+        max_concurrent=10,
         # only_run_ids={"045e512c"},
     )
     evaluate_solutions(

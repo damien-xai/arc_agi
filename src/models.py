@@ -38,6 +38,7 @@ class Model(str, Enum):
     gpt_4o_mini = "gpt-4o-mini"
     o1_mini = "o1-mini"
     o3_mini = "o3-mini"
+    o3 = "o3"
     o1_preview = "o1-preview"
     azure_gpt_4o = "azure-gpt-4o"
     azure_gpt_4o_mini = "azure-gpt-4o-mini"
@@ -150,10 +151,16 @@ model_price_map: dict[Model, ModelPrice] = {
         output_tokens_per_million_cents=440,
     ),
     Model.openrouter_o3: ModelPrice(
-        cache_create_per_million_cents=110,
-        cache_read_per_million_cents=55,
-        input_tokens_per_million_cents=110,
-        output_tokens_per_million_cents=440,
+        cache_create_per_million_cents=0,
+        cache_read_per_million_cents=200,
+        input_tokens_per_million_cents=200,
+        output_tokens_per_million_cents=800,
+    ),
+    Model.o3: ModelPrice(
+        cache_create_per_million_cents=0,
+        cache_read_per_million_cents=200,
+        input_tokens_per_million_cents=200,
+        output_tokens_per_million_cents=800,
     ),
     Model.openrouter_o4_mini: ModelPrice(
         cache_create_per_million_cents=110,
