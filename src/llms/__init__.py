@@ -224,8 +224,19 @@ async def get_next_message_openai(
     print("hi from nect message")
     retry_count = 0
     extra_params = {}
-    if model not in [Model.o3_mini, Model.o1_mini, Model.o1_preview, Model.o3]:
+    if model not in [
+        Model.o3_mini,
+        Model.o1_mini,
+        Model.o1_preview,
+        Model.o3,
+        Model.o4_mini,
+    ]:
         extra_params["temperature"] = temperature
+
+    max_completion_tokens = 80_000
+    if model in [Model.gpt_41]:
+        max_completion_tokens = 32768
+
     while True:
         try:
             request_id = random_string()
@@ -233,7 +244,7 @@ async def get_next_message_openai(
             logfire.debug(f"[{request_id}] calling openai")
             message = await openai_client.chat.completions.create(
                 **extra_params,
-                max_completion_tokens=50_000,
+                max_completion_tokens=max_completion_tokens,
                 messages=messages,
                 model=model.value,
             )
@@ -486,6 +497,8 @@ async def get_next_messages(
         Model.o1_preview,
         Model.o3_mini,
         Model.o3,
+        Model.gpt_41,
+        Model.o4_mini,
     ]:
         print("HI THERE! from openai")
         openai_client = AsyncOpenAI(

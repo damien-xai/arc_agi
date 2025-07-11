@@ -11,7 +11,9 @@ from src.models import (
     RootPromptConfig,
 )
 
-model = Model.o3
+# model = Model.o3
+# model = Model.gpt_41
+model = Model.o4_mini
 
 prod_kaggle_tree: list[RootAttemptConfig] = [
     RootAttemptConfig(

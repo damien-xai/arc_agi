@@ -144,11 +144,18 @@ async def run_from_json(
     if offset:
         challenges = {k: challenges[k] for k in list(challenges)[offset:]}
     if limit:
-        # only include the first 10 challenges
-        challenge_keys = list(challenges.keys())
+        # Sort by length of str(Challenge) where Challenge is the value
         if use_smallest_first:
-            challenge_keys = sorted(challenges.keys(), key=str)
-        challenges = {k: challenges[k] for k in challenge_keys[:limit]}
+            # Sort dict items by length of str(value)
+            sorted_items = sorted(challenges.items(), key=lambda x: len(str(x[1])))
+            challenges = dict(sorted_items)
+
+        # Only include the first 'limit' challenges
+        challenges = {k: challenges[k] for k in list(challenges.keys())[:limit]}
+
+        # Print lengths to verify
+        for k, v in challenges.items():
+            print(f"Key: {k}, Length: {len(str(v))}")
 
     solutions_d: dict[str, list[ChallengeSolution]] = {}
     # run all challenges in parallel to start
@@ -203,7 +210,7 @@ async def run() -> None:
         tree=o3.small_tree,
         # limit=10,
         # offset=50,
-        limit=1,
+        limit=5,
         use_smallest_first=True,
         offset=0,
         max_concurrent=10,
