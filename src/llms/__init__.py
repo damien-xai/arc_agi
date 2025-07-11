@@ -221,9 +221,10 @@ async def get_next_message_openai(
     max_retries: int = 15,
     name: str = "openai",
 ) -> tuple[str, ModelUsage] | None:
+    print("hi from nect message")
     retry_count = 0
     extra_params = {}
-    if model not in [Model.o3_mini, Model.o1_mini, Model.o1_preview]:
+    if model not in [Model.o3_mini, Model.o1_mini, Model.o1_preview, Model.o3]:
         extra_params["temperature"] = temperature
     while True:
         try:
@@ -658,36 +659,36 @@ async def get_next_messages(
         ]:
             messages = text_only_messages(messages=messages)
 
-        # Remove cache_control from messages for OpenRouter
-        # OpenRouter doesn't support Anthropic's cache control feature
-        for message in messages:
-            if isinstance(message.get("content"), list):
-                for content in message["content"]:
-                    if "cache_control" in content:
-                        del content["cache_control"]
+            # Remove cache_control from messages for OpenRouter
+            # OpenRouter doesn't support Anthropic's cache control feature
+            for message in messages:
+                if isinstance(message.get("content"), list):
+                    for content in message["content"]:
+                        if "cache_control" in content:
+                            del content["cache_control"]
 
-        n_messages = [
-            # await get_next_message_openrouter(
-            #     openrouter_client=openrouter_client,
-            #     messages=messages,
-            #     model=model,
-            #     temperature=temperature,
-            # ),
-            *await asyncio.gather(
-                *[
-                    get_next_message_openrouter(
-                        openrouter_client=openrouter_client,
-                        messages=messages,
-                        model=model,
-                        temperature=temperature,
-                    )
-                    # for _ in range(n_times - 1)
-                    for _ in range(n_times)
-                ]
-            ),
-        ]
-        # filter out the Nones
-        return [m for m in n_messages if m]
+            n_messages = [
+                # await get_next_message_openrouter(
+                #     openrouter_client=openrouter_client,
+                #     messages=messages,
+                #     model=model,
+                #     temperature=temperature,
+                # ),
+                *await asyncio.gather(
+                    *[
+                        get_next_message_openrouter(
+                            openrouter_client=openrouter_client,
+                            messages=messages,
+                            model=model,
+                            temperature=temperature,
+                        )
+                        # for _ in range(n_times - 1)
+                        for _ in range(n_times)
+                    ]
+                ),
+            ]
+            # filter out the Nones
+            return [m for m in n_messages if m]
     else:
         raise ValueError(f"Invalid model: {model}")
 
