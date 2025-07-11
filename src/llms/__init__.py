@@ -419,8 +419,7 @@ async def get_next_messages(
             temperature=temperature,
             n_times=n_times,
         )
-
-    if model in [Model.claude_3_5_sonnet, Model.claude_3_5_haiku]:
+    elif model in [Model.claude_3_5_sonnet, Model.claude_3_5_haiku]:
         if model == Model.claude_3_5_haiku:
             messages = text_only_messages(messages)
         anthropic_client = AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
@@ -487,6 +486,7 @@ async def get_next_messages(
         Model.o3_mini,
         Model.o3,
     ]:
+        print("HI THERE! from openai")
         openai_client = AsyncOpenAI(
             api_key=os.environ["OPENAI_API_KEY"],
             timeout=1200,
