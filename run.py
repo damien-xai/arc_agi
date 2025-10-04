@@ -184,7 +184,7 @@ async def run_from_json(
 
 
 async def run() -> None:
-    training_or_eval = "training"  # Changed to training for testing
+    training_or_eval = "evaluation"  # Changed to evaluation for full benchmark
     v1or2 = "2024"  # Using 2024 dataset (ARC-AGI-1)
     challenges_path = f"arc-prize-{v1or2}/arc-agi_{training_or_eval}_challenges.json"
     truth_solutions_path = (
@@ -207,13 +207,13 @@ async def run() -> None:
         # tree=deepseek.prod_kaggle_tree,
         # tree=deepseek.small_baseten_tree,
         # tree=o3.small_tree,
-        tree=grok.small_tree,  # Using Grok small_tree for testing!
-        # limit=10,
+        tree=grok.prod_tree,  # Using Grok small_tree for testing!
+        # limit=400,
         # offset=50,
-        limit=1,  # Just 1 puzzle for initial test
+        limit=None,  # Running all 400 evaluation puzzles
         use_smallest_first=True,  # Start with smallest/easiest puzzle
         offset=0,
-        max_concurrent=5,  # Reduced concurrent requests for testing
+        max_concurrent=20,  # Increased for faster processing
         # only_run_ids={"045e512c"},
     )
     evaluate_solutions(
