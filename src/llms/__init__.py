@@ -413,8 +413,25 @@ async def get_next_messages(
     if n_times <= 0:
         return []
 
+    # Route xAI Grok models to direct xAI API (uses XAI_API_KEY)
+    if model in [Model.grok_4_fast_reasoning, Model.grok_4_fast_non_reasoning]:
+        from .xai import get_next_messages_xai
+
+        # Remove cache_control from messages (xAI doesn't support caching)
+        for message in messages:
+            if isinstance(message.get("content"), list):
+                for content in message["content"]:
+                    if "cache_control" in content:
+                        del content["cache_control"]
+
+        return await get_next_messages_xai(
+            messages=messages,
+            model=model,
+            temperature=temperature,
+            n_times=n_times,
+        )
     # Route all OpenRouter models to the clean implementation
-    if "openrouter" in model.value:
+    elif "openrouter" in model.value:
         from .openrouter import get_next_messages as get_openrouter_messages
 
         # Remove cache_control from messages for OpenRouter

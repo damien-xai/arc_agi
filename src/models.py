@@ -59,6 +59,9 @@ class Model(str, Enum):
     gemini_1_5_pro = "gemini-1.5-pro-002"
     deep_seek_r1 = "deepseek-reasoner"
     baseten_deepseek_r1 = "baseten_deepseek_r1"
+    # xAI Grok models (direct API)
+    grok_4_fast_reasoning = "grok-4-fast-reasoning"
+    grok_4_fast_non_reasoning = "grok-4-fast-non-reasoning"
 
 
 class ModelPrice(BaseModel):
@@ -188,6 +191,19 @@ model_price_map: dict[Model, ModelPrice] = {
         cache_read_per_million_cents=75,  # $0.00000075 per token = $0.75 per million
         input_tokens_per_million_cents=300,  # $3 per million
         output_tokens_per_million_cents=1500,  # $15 per million
+    ),
+    # xAI Grok 4 Fast (direct API) - $0.20 in / $0.50 out per million
+    Model.grok_4_fast_reasoning: ModelPrice(
+        cache_create_per_million_cents=20,  # $0.20 per million
+        cache_read_per_million_cents=5,  # Estimate (10% of input)
+        input_tokens_per_million_cents=20,  # $0.20 per million tokens
+        output_tokens_per_million_cents=50,  # $0.50 per million tokens
+    ),
+    Model.grok_4_fast_non_reasoning: ModelPrice(
+        cache_create_per_million_cents=20,
+        cache_read_per_million_cents=5,
+        input_tokens_per_million_cents=20,
+        output_tokens_per_million_cents=50,
     ),
 }
 

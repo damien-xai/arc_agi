@@ -1,0 +1,259 @@
+"""
+Tree configurations for xAI Grok 4 Fast models.
+Based on the prod_kaggle_tree structure but adapted for Grok.
+"""
+from src.models import (
+    AttemptEdge,
+    FixAttemptConfig,
+    FixPromptConfig,
+    KTopConfig,
+    LLMConfig,
+    Model,
+    PoolingConfig,
+    Prompt,
+    RootAttemptConfig,
+    RootPromptConfig,
+)
+
+# Use Grok 4 Fast Reasoning by default
+model = Model.grok_4_fast_reasoning
+
+# Small test tree for initial validation
+small_tree: list[RootAttemptConfig] = [
+    RootAttemptConfig(
+        attempts=5,
+        llm_config=LLMConfig(
+            model=model,
+            temperature=0.95,
+        ),
+        prompt_config=RootPromptConfig(
+            base_prompt=Prompt.REASONING,
+            use_examples=True,
+            use_diffs=True,
+            use_images=False,  # Grok doesn't need images for now
+            use_ascii=True,
+            use_array=True,
+            use_image=False,
+        ),
+        fixes=[],
+    ),
+    RootAttemptConfig(
+        include_all_attempts_in_fixes=True,
+        attempts=10,
+        llm_config=LLMConfig(
+            model=model,
+            temperature=0.95,
+        ),
+        prompt_config=RootPromptConfig(
+            base_prompt=Prompt.REASONING,
+            use_examples=True,
+            use_diffs=True,
+            use_images=False,
+            use_ascii=True,
+            use_array=True,
+            use_image=False,
+        ),
+        fixes=[
+            AttemptEdge(
+                k_top_config=KTopConfig(
+                    k_top=3, unique_code=False, unique_output=False
+                ),
+                configs=[
+                    FixAttemptConfig(
+                        attempts=3,
+                        llm_config=LLMConfig(
+                            model=model,
+                            temperature=0.95,
+                        ),
+                        prompt_config=FixPromptConfig(
+                            base_prompt=Prompt.REASONING,
+                            use_ascii=True,
+                            use_array=True,
+                            use_image=False,
+                            use_fix_reasoning_tags=True,
+                            use_fix_fail_line=True,
+                            use_typical_issue_text=True,
+                            include_diffs=True,
+                        ),
+                        fixes=[],
+                    )
+                ],
+            ),
+        ],
+    ),
+]
+
+# Production tree - full evolutionary approach (similar to prod_kaggle_tree)
+prod_tree: list[RootAttemptConfig] = [
+    RootAttemptConfig(
+        attempts=50,
+        llm_config=LLMConfig(
+            model=model,
+            temperature=0.95,
+        ),
+        prompt_config=RootPromptConfig(
+            base_prompt=Prompt.REASONING,
+            use_examples=True,
+            use_diffs=True,
+            use_images=False,
+            use_ascii=True,
+            use_array=True,
+            use_image=False,
+        ),
+        fixes=[],
+    ),
+    RootAttemptConfig(
+        include_all_attempts_in_fixes=True,
+        attempts=200,
+        llm_config=LLMConfig(
+            model=model,
+            temperature=0.95,
+        ),
+        prompt_config=RootPromptConfig(
+            base_prompt=Prompt.REASONING,
+            use_examples=True,
+            use_diffs=True,
+            use_images=False,
+            use_ascii=True,
+            use_array=True,
+            use_image=False,
+        ),
+        fixes=[
+            # Track A: Single Parent Evolution
+            AttemptEdge(
+                k_top_config=KTopConfig(
+                    k_top=10, unique_code=False, unique_output=False
+                ),
+                configs=[
+                    FixAttemptConfig(
+                        attempts=10,
+                        llm_config=LLMConfig(
+                            model=model,
+                            temperature=0.95,
+                        ),
+                        prompt_config=FixPromptConfig(
+                            base_prompt=Prompt.REASONING,
+                            use_ascii=True,
+                            use_array=True,
+                            use_image=False,
+                            use_fix_reasoning_tags=True,
+                            use_fix_fail_line=True,
+                            use_typical_issue_text=True,
+                            include_diffs=True,
+                        ),
+                        fixes=[
+                            AttemptEdge(
+                                k_top_config=KTopConfig(
+                                    k_top=5, unique_code=False, unique_output=False
+                                ),
+                                configs=[
+                                    FixAttemptConfig(
+                                        attempts=10,
+                                        llm_config=LLMConfig(
+                                            model=model,
+                                            temperature=0.95,
+                                        ),
+                                        prompt_config=FixPromptConfig(
+                                            base_prompt=Prompt.REASONING,
+                                            use_ascii=True,
+                                            use_array=True,
+                                            use_image=False,
+                                            use_fix_reasoning_tags=True,
+                                            use_fix_fail_line=True,
+                                            use_typical_issue_text=True,
+                                            include_diffs=True,
+                                        ),
+                                        fixes=[
+                                            AttemptEdge(
+                                                k_top_config=KTopConfig(
+                                                    k_top=5,
+                                                    unique_code=False,
+                                                    unique_output=False,
+                                                ),
+                                                configs=[
+                                                    FixAttemptConfig(
+                                                        attempts=10,
+                                                        llm_config=LLMConfig(
+                                                            model=model,
+                                                            temperature=0.95,
+                                                        ),
+                                                        prompt_config=FixPromptConfig(
+                                                            base_prompt=Prompt.REASONING,
+                                                            use_ascii=True,
+                                                            use_array=True,
+                                                            use_image=False,
+                                                            use_fix_reasoning_tags=True,
+                                                            use_fix_fail_line=True,
+                                                            use_typical_issue_text=True,
+                                                            include_diffs=True,
+                                                        ),
+                                                        fixes=[],
+                                                    )
+                                                ],
+                                            )
+                                        ],
+                                    )
+                                ],
+                            )
+                        ],
+                    )
+                ],
+            ),
+            # Track B: Pooled Parents Evolution
+            AttemptEdge(
+                pooling=(PoolingConfig(size=3)),
+                k_top_config=KTopConfig(
+                    k_top=5, unique_code=False, unique_output=False
+                ),
+                configs=[
+                    FixAttemptConfig(
+                        attempts=5,
+                        llm_config=LLMConfig(
+                            model=model,
+                            temperature=0.95,
+                        ),
+                        prompt_config=FixPromptConfig(
+                            base_prompt=Prompt.REASONING,
+                            use_ascii=True,
+                            use_array=True,
+                            use_image=False,
+                            use_fix_reasoning_tags=True,
+                            use_fix_fail_line=True,
+                            use_typical_issue_text=True,
+                            include_diffs=True,
+                        ),
+                        fixes=[
+                            AttemptEdge(
+                                pooling=(PoolingConfig(size=3)),
+                                k_top_config=KTopConfig(
+                                    k_top=5, unique_code=False, unique_output=False
+                                ),
+                                configs=[
+                                    FixAttemptConfig(
+                                        attempts=5,
+                                        llm_config=LLMConfig(
+                                            model=model,
+                                            temperature=0.95,
+                                        ),
+                                        prompt_config=FixPromptConfig(
+                                            base_prompt=Prompt.REASONING,
+                                            use_ascii=True,
+                                            use_array=True,
+                                            use_image=False,
+                                            use_fix_reasoning_tags=True,
+                                            use_fix_fail_line=True,
+                                            use_typical_issue_text=True,
+                                            include_diffs=True,
+                                        ),
+                                        fixes=[],
+                                    )
+                                ],
+                            )
+                        ],
+                    )
+                ],
+            ),
+        ],
+    ),
+]
+
