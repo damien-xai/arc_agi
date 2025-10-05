@@ -213,7 +213,7 @@ async def run() -> None:
         limit=None,  # Running all 400 evaluation puzzles
         use_smallest_first=True,  # Start with smallest/easiest puzzle
         offset=0,
-        max_concurrent=20,  # Increased for faster processing
+        max_concurrent=5,  # Increased for faster processing
         # only_run_ids={"045e512c"},
     )
     evaluate_solutions(
