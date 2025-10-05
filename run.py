@@ -153,9 +153,9 @@ async def run_from_json(
         # Only include the first 'limit' challenges
         challenges = {k: challenges[k] for k in list(challenges.keys())[:limit]}
 
-        # Print lengths to verify
-        for k, v in challenges.items():
-            print(f"Key: {k}, Length: {len(str(v))}")
+        puzzle_ids = list(challenges.keys())
+        print(f"Selected {len(challenges)} puzzles to run (limit={limit})")
+        print(f"Puzzle IDs: {', '.join(puzzle_ids)}")
 
     solutions_d: dict[str, list[ChallengeSolution]] = {}
     # run all challenges in parallel to start
@@ -210,7 +210,7 @@ async def run() -> None:
         tree=grok.prod_tree,  # Using Grok small_tree for testing!
         # limit=400,
         # offset=50,
-        limit=10,  # Running all 400 evaluation puzzles
+        limit=400,  # Running all 400 evaluation puzzles
         use_smallest_first=True,  # Start with smallest/easiest puzzle
         offset=0,
         max_concurrent=2,  # Reduced to avoid rate limits (xAI: 4M TPM, 480 RPM)
