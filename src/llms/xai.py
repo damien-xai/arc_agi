@@ -74,45 +74,73 @@ async def get_next_messages_xai(
         "stream": False,
     }
     
-    # Make N parallel requests
+    # Make N parallel requests with retry logic
     async def make_request() -> tuple[str, ModelUsage] | None:
-        try:
-            async with httpx.AsyncClient(timeout=300.0) as client:
-                response = await client.post(
-                    f"{base_url}/chat/completions",
-                    headers=headers,
-                    json=payload,
-                )
-                response.raise_for_status()
-                data = response.json()
-                
-                # Extract response text
-                response_text = data["choices"][0]["message"]["content"]
-                
-                # Extract usage information
-                usage_data = data.get("usage", {})
-                usage = ModelUsage(
-                    cache_creation_input_tokens=0,  # xAI doesn't report cache separately
-                    cache_read_input_tokens=0,
-                    input_tokens=usage_data.get("prompt_tokens", 0),
-                    output_tokens=usage_data.get("completion_tokens", 0),
-                )
-                
-                logfire.debug(
-                    f"xAI {model.value} response",
-                    input_tokens=usage.input_tokens,
-                    output_tokens=usage.output_tokens,
-                    response_length=len(response_text),
-                )
-                
-                return (response_text, usage)
-                
-        except httpx.HTTPStatusError as e:
-            logfire.debug(f"xAI API error: {e.response.status_code} - {e.response.text}")
-            return None
-        except Exception as e:
-            logfire.debug(f"xAI request failed: {e}")
-            return None
+        retry_count = 0
+        max_retries = 50
+        
+        while retry_count < max_retries:
+            try:
+                async with httpx.AsyncClient(timeout=300.0) as client:
+                    response = await client.post(
+                        f"{base_url}/chat/completions",
+                        headers=headers,
+                        json=payload,
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    
+                    # Extract response text
+                    response_text = data["choices"][0]["message"]["content"]
+                    
+                    # Extract usage information
+                    usage_data = data.get("usage", {})
+                    usage = ModelUsage(
+                        cache_creation_input_tokens=0,  # xAI doesn't report cache separately
+                        cache_read_input_tokens=0,
+                        input_tokens=usage_data.get("prompt_tokens", 0),
+                        output_tokens=usage_data.get("completion_tokens", 0),
+                    )
+                    
+                    logfire.debug(
+                        f"xAI {model.value} response",
+                        input_tokens=usage.input_tokens,
+                        output_tokens=usage.output_tokens,
+                        response_length=len(response_text),
+                    )
+                    
+                    return (response_text, usage)
+                    
+            except httpx.HTTPStatusError as e:
+                # Check if it's a rate limit error (429)
+                if e.response.status_code == 429:
+                    retry_count += 1
+                    # Gradual backoff: 1s, 3s, 5s, then exponential (7.5s, 11.25s, ...)
+                    if retry_count == 1:
+                        wait_time = 1
+                    elif retry_count == 2:
+                        wait_time = 3
+                    elif retry_count == 3:
+                        wait_time = 5
+                    else:
+                        # Exponential backoff from 5s: 7.5, 11.25, 16.875...
+                        wait_time = 5 * (1.5 ** (retry_count - 3))
+                    
+                    logfire.debug(
+                        f"xAI rate limit (429), retrying in {wait_time:.1f}s ({retry_count}/{max_retries})"
+                    )
+                    await asyncio.sleep(wait_time)
+                else:
+                    # Other HTTP errors, don't retry
+                    logfire.debug(f"xAI API error: {e.response.status_code} - {e.response.text}")
+                    return None
+            except Exception as e:
+                logfire.debug(f"xAI request failed: {e}")
+                return None
+        
+        # Max retries exceeded
+        logfire.debug(f"xAI request failed after {max_retries} retries")
+        return None
     
     # Run N requests in parallel
     results = await asyncio.gather(*[make_request() for _ in range(n_times)])
