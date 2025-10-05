@@ -207,10 +207,8 @@ async def run() -> None:
         # tree=deepseek.prod_kaggle_tree,
         # tree=deepseek.small_baseten_tree,
         # tree=o3.small_tree,
-        tree=grok.prod_tree,  # Using Grok small_tree for testing!
-        # limit=400,
-        # offset=50,
-        limit=400,  # Running all 400 evaluation puzzles
+        tree=grok.prod_tree,  # Using Grok prod_tree for testing!
+        limit=None,  # Set by benchmark script
         use_smallest_first=True,  # Start with smallest/easiest puzzle
         offset=0,
         max_concurrent=2,  # Reduced to avoid rate limits (xAI: 4M TPM, 480 RPM)

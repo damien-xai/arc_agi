@@ -15,3 +15,5 @@ wheels/
 logs.txt
 test_data/tmp_solutions*
 test_data/training_solutions*
+test_data/evaluation_solutions*
+logs_*.txt
