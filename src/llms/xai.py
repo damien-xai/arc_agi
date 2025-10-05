@@ -93,23 +93,28 @@ async def get_next_messages_xai(
                     # Extract response text
                     response_text = data["choices"][0]["message"]["content"]
                     
-                    # Extract usage information
-                    usage_data = data.get("usage", {})
-                    usage = ModelUsage(
-                        cache_creation_input_tokens=0,  # xAI doesn't report cache separately
-                        cache_read_input_tokens=0,
-                        input_tokens=usage_data.get("prompt_tokens", 0),
-                        output_tokens=usage_data.get("completion_tokens", 0),
-                    )
-                    
-                    logfire.debug(
-                        f"xAI {model.value} response",
-                        input_tokens=usage.input_tokens,
-                        output_tokens=usage.output_tokens,
-                        response_length=len(response_text),
-                    )
-                    
-                    return (response_text, usage)
+                # Extract usage information
+                usage_data = data.get("usage", {})
+                usage = ModelUsage(
+                    cache_creation_input_tokens=0,  # xAI doesn't report cache separately
+                    cache_read_input_tokens=0,
+                    input_tokens=usage_data.get("prompt_tokens", 0),
+                    output_tokens=usage_data.get("completion_tokens", 0),
+                )
+                
+                # Calculate cost
+                from src.models import Attempt
+                cost_cents = Attempt.cost_cents_from_usage(model=model, usage=usage)
+                
+                logfire.debug(
+                    f"xAI {model.value} response",
+                    input_tokens=usage.input_tokens,
+                    output_tokens=usage.output_tokens,
+                    cost_cents=cost_cents,
+                    response_length=len(response_text),
+                )
+                
+                return (response_text, usage)
                     
             except httpx.HTTPStatusError as e:
                 # Check if it's a rate limit error (429)
